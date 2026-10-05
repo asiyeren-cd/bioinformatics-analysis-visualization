@@ -1,0 +1,83 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+csv_file = "gene_presence_absence.csv"
+df = pd.read_csv(csv_file, low_memory=False)
+
+
+metadata_cols = [
+    'Gene', 'Non-unique Gene name', 'Annotation', 'No. isolates', 
+    'No. sequences', 'Avg sequences per isolate', 'Genome Fragment', 
+    'Order within Fragment', 'Accessory Fragment', 'Accessory Order with Fragment', 
+    'QC', 'Min group size nuc', 'Max group size nuc', 'Avg group size nuc'
+]
+
+
+strain_cols = [col for col in df.columns if col not in metadata_cols]
+n_strains = len(strain_cols)
+print(f"Toplam suş sayısı: {n_strains}")
+
+
+
+binary_df = df[strain_cols].notna().astype(int)
+
+
+gene_frequencies = binary_df.sum(axis=1)
+binary_df = binary_df.iloc[gene_frequencies.sort_values(ascending=False).index]
+
+
+print("Pangenom matriksi çiziliyor...")
+
+matrix_to_plot = binary_df.T  # Satırlar: Suşlar, Sütunlar: Genler (8398 gen)
+
+plt.figure(figsize=(14, 6))
+
+cmap = ["#f0f0f0", "#1b4f72"] 
+
+ax = sns.heatmap(
+    matrix_to_plot, 
+    cmap=cmap, 
+    cbar=False, 
+    xticklabels=False, 
+    yticklabels=True
+)
+
+plt.title("Pan-genome Gene Presence/Absence Matrix (Panaroo)", fontsize=14, weight='bold', pad=15)
+plt.xlabel(f"Pan-genome Genes (Total: {len(df):,})", fontsize=12, labelpad=10)
+plt.ylabel("Strains", fontsize=12, labelpad=10)
+plt.tight_layout()
+
+
+plt.savefig("Figure_Pangenome_Matrix.png", dpi=300)
+plt.savefig("Figure_Pangenome_Matrix.pdf") # Vektörel format
+print("-> Figure_Pangenome_Matrix.png ve .pdf kaydedildi!")
+plt.close()
+
+
+print("Sınıf dağılım grafiği çiziliyor...")
+
+labels = ['Core (>99%)', 'Soft core (95-99%)', 'Shell (15-95%)', 'Cloud (<15%)']
+sizes = [2162, 515, 3095, 2626]
+colors = ['#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78']
+explode = (0.05, 0.05, 0, 0)
+
+plt.figure(figsize=(7, 7))
+plt.pie(
+    sizes, 
+    explode=explode, 
+    labels=labels, 
+    colors=colors, 
+    autopct=lambda p: f'{p:.1f}%\n({int(p*sum(sizes)/100):,})',
+    startangle=140,
+    textprops={'fontsize': 11}
+)
+plt.title("Photobacterium damselae subsp. piscicida\nPan-genome Partitioning", fontsize=13, weight='bold')
+plt.tight_layout()
+
+plt.savefig("Figure_Pangenome_Pie.png", dpi=300)
+plt.savefig("Figure_Pangenome_Pie.pdf")
+print("-> Figure_Pangenome_Pie.png ve .pdf kaydedildi!")
+plt.close()
