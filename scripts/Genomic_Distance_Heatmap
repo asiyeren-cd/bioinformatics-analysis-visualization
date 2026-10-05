@@ -1,0 +1,68 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from scipy.spatial.distance import pdist, squareform
+from scipy.cluster.hierarchy import linkage
+
+
+csv_file = 'gene_presence_absence.csv'
+df = pd.read_csv(csv_file, low_memory=False)
+
+meta_cols = {'Gene', 'Non-unique Gene name', 'Annotation', 'No. isolates', 
+             'No. sequences', 'Avg sequences per isolate', 'Genome Fragment'}
+
+
+strain_cols = [c for c in df.columns if c not in meta_cols]
+df_strains = df[strain_cols].copy()
+df_strains.columns = [c.strip() for c in df_strains.columns]
+
+
+binary_df = df_strains.notna().astype(int)
+
+
+strain_matrix = binary_df.T
+
+
+dist_array = pdist(strain_matrix.values, metric='jaccard')
+dist_matrix = pd.DataFrame(squareform(dist_array), 
+                           index=strain_matrix.index, 
+                           columns=strain_matrix.index)
+
+
+row_linkage = linkage(dist_array, method='average')
+
+
+cmap = sns.color_palette("YlOrRd_r", as_cmap=True)
+
+
+plt.rcParams['font.sans-serif'] = 'Arial'
+plt.rcParams['font.family'] = 'sans-serif'
+
+g = sns.clustermap(
+    dist_matrix,
+    row_linkage=row_linkage,
+    col_linkage=row_linkage,
+    cmap=cmap,
+    figsize=(10, 9),
+    cbar_kws={'label': 'Pairwise Genomic Distance (Jaccard)'},
+    dendrogram_ratio=(0.18, 0.18),
+    xticklabels=True,
+    yticklabels=True,
+    linewidths=0.3,
+    linecolor='white'
+)
+
+
+plt.setp(g.ax_heatmap.get_xticklabels(), rotation=90, fontsize=9, fontweight='medium')
+plt.setp(g.ax_heatmap.get_yticklabels(), rotation=0, fontsize=9, fontweight='medium')
+
+
+g.fig.suptitle('Pairwise Accessory Genome Distance Matrix (P. damselae subsp. piscicida)', 
+               y=1.02, fontsize=12, fontweight='bold')
+
+
+output_img = 'Figure_Genomic_Distance_Heatmap.png'
+plt.savefig(output_img, dpi=300, bbox_inches='tight')
+print(f"Grafik basariyla olusturuldu: {output_img}")
+plt.show()
